@@ -1,0 +1,20 @@
+Fitter Status : Successful - Sat Nov 25 02:47:33 2017
+Quartus Prime Version : 15.1.0 Build 185 10/21/2015 SJ Lite Edition
+Revision Name : AP9
+Top-level Entity Name : AP9
+Family : Cyclone V
+Device : 5CGXFC7D7F31C8
+Timing Models : Final
+Logic utilization (in ALMs) : 5,332 / 56,480 ( 9 % )
+Total registers : 920
+Total pins : 68 / 522 ( 13 % )
+Total virtual pins : 0
+Total block memory bits : 421,888 / 7,024,640 ( 6 % )
+Total RAM Blocks : 52 / 686 ( 8 % )
+Total DSP Blocks : 0 / 156 ( 0 % )
+Total HSSI RX PCSs : 0 / 9 ( 0 % )
+Total HSSI PMA RX Deserializers : 0 / 9 ( 0 % )
+Total HSSI TX PCSs : 0 / 9 ( 0 % )
+Total HSSI PMA TX Serializers : 0 / 9 ( 0 % )
+Total PLLs : 0 / 16 ( 0 % )
+Total DLLs : 0 / 4 ( 0 % )
