@@ -1,0 +1,15 @@
+WIDTH=5;
+DEPTH=2048;
+
+ADDRESS_RADIX=UNS;
+DATA_RADIX=BIN;
+
+CONTENT BEGIN
+
+-- CARACTERES LIVRES PARA EDICAO
+
+-- Costuma-se deixar o primeiro simbolo sempre preto
+	[0..7]  :   00000;
+	[8..1000] : 10000;
+	[1001..2047] : 00000;
+END;

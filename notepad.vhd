@@ -107,12 +107,13 @@ ARCHITECTURE a OF notepad IS
 																				MILLIPEDE_PART1, MILLIPEDE_PART2);
 	SIGNAL MIL_COUNT_UPDATE: INTEGER := 0;
 	SIGNAL MIL_COUNT_RENDER: INTEGER := 0;
-	SIGNAL MIL_COUNT_COLIS: INTEGER := 0;
+	SIGNAL MIL_COUNT_ROCKET: INTEGER := 0;
 
 	--Cria um array de obstaculos
 	SIGNAL OBSTACLE_ARRAY: OBSTACLE_ARRAY_T(9 DOWNTO 0);
 	SIGNAL NUM_OBSTS: INTEGER := 1;
 	SIGNAL OBST_COUNT_RENDER: INTEGER := 0;
+	SIGNAL OBST_RENDER_TIMER: INTEGER := 0;
 BEGIN
 
 -- Nave
@@ -169,6 +170,8 @@ UPDATE_SPACESHIP: PROCESS (clk, reset)
 END PROCESS;
 
 UPDATE_ROCKETS: PROCESS(clk, reset)
+VARIABLE ATINGIU_MILLIPEDE: BOOLEAN := FALSE;
+VARIABLE TESTANDO_COLISAO_MILLIPEDE : BOOLEAN := FALSE;
 BEGIN 
 	IF RESET = '1' THEN
 		ROCKET.CUR_POSIT <= 0;
@@ -176,22 +179,50 @@ BEGIN
 		ROCKET.COLOR <= 3; 
 		ROCKET.TIME_SINCE_LAST_UPDATE <= 0;
 		ROCKET.UPDATE_STATE <= NOT_FIRED;
+		MIL_COUNT_ROCKET <= 0;
+		NUM_OBSTS <= 1;
+		OBSTACLE_ARRAY(0) <= OBSTACLE;
 		
 	ELSIF (CLK'EVENT AND CLK = '1') THEN
 		CASE ROCKET.UPDATE_STATE IS
 			WHEN NOT_FIRED =>--Foguete ainda nao foi disparado
 				CASE key IS 
 					WHEN x"66" => --Tecla f
-						ROCKET.CUR_POSIT <= SPACESHIP.CUR_POSIT-40;
+						ROCKET.CUR_POSIT <= SPACESHIP.CUR_POSIT-40;--Coloca o missil acima da nave
 						ROCKET.TIME_SINCE_LAST_UPDATE <= 0;
 						ROCKET.UPDATE_STATE <= FIRED;
 					WHEN OTHERS =>
 				END CASE;
 			WHEN FIRED =>--Foguete foi disparado. Atualiza posicao
 
-				IF(ROCKET.TIME_SINCE_LAST_UPDATE >= 3000) THEN --Chegou o momento de atualizar a posicao do foguete
-					IF(ROCKET.CUR_POSIT > 39) THEN--Ainda esta dentro da tela
-						ROCKET.CUR_POSIT <= ROCKET.CUR_POSIT-40;
+				IF(ROCKET.TIME_SINCE_LAST_UPDATE >= 1000) THEN --Chegou o momento de atualizar a posicao do foguete
+				
+					IF(ROCKET.CUR_POSIT > 39) THEN--Foguete ainda esta dentro da tela
+					
+						TESTANDO_COLISAO_MILLIPEDE := MIL_COUNT_ROCKET < NUM_MILLIPEDE_PARTS-1;--Testa colisao com todas 
+																													  --as partes vivas do millipede
+						IF(TESTANDO_COLISAO_MILLIPEDE) THEN
+							ATINGIU_MILLIPEDE := ROCKET.UPDATE_STATE = FIRED AND (ROCKET.CUR_POSIT - 40 = MILLIPEDE_PARTS(MIL_COUNT_ROCKET).CUR_POSIT);
+						
+							IF(ATINGIU_MILLIPEDE) THEN	
+								MILLIPEDE_PARTS(MIL_COUNT_ROCKET).LIFE <= DEAD;
+								NUM_OBSTS <= NUM_OBSTS+1;
+								OBSTACLE_ARRAY(NUM_OBSTS-1).CUR_POSIT <= MILLIPEDE_PARTS(MIL_COUNT_ROCKET).CUR_POSIT;
+								OBSTACLE_ARRAY(NUM_OBSTS-1).LIFE <= 1;
+								OBSTACLE_ARRAY(NUM_OBSTS-1).CHAR <= 7;
+								OBSTACLE_ARRAY(NUM_OBSTS-1).COLOR <= 10;
+								ROCKET.CUR_POSIT <= 0;
+								ROCKET.UPDATE_STATE <= NOT_FIRED;
+							ELSE
+								MIL_COUNT_ROCKET <= (MIL_COUNT_ROCKET + 1) MOD NUM_MILLIPEDE_PARTS;
+							END IF;
+							
+						ELSE 
+							ROCKET.CUR_POSIT <= ROCKET.CUR_POSIT-40;--Movimenta o foguete
+							MIL_COUNT_ROCKET <= 0;--Reseta o contador pra testar colisao novamente na proxima iteracao
+
+						END IF;
+						
 					ELSE --Saiu da tela
 						ROCKET.UPDATE_STATE <= NOT_FIRED;
 						ROCKET.CUR_POSIT <= 0;
@@ -200,7 +231,8 @@ BEGIN
 					ROCKET.TIME_SINCE_LAST_UPDATE <= 0;
 				ELSE--Se nao chegou a hora de atualizar, reinicia o timer e entra de novo no processo
 					ROCKET.TIME_SINCE_LAST_UPDATE <= ROCKET.TIME_SINCE_LAST_UPDATE+1;	
-				END IF;--If do delay
+				END IF;--If do timer
+				
 		END CASE;--Case da maquina de estados do foguete
 	END IF;--If do clock
 
@@ -312,7 +344,8 @@ BEGIN
 					END IF;--Fim do else if que tratou colisao
 				
 				WHEN DEAD =>--Morreu, entao desaparece e cria um obstaculo no lugar (TO DO)
-					MILLIPEDE_PARTS(MIL_COUNT_UPDATE).CHAR <= 7;
+					MILLIPEDE_PARTS(MIL_COUNT_UPDATE).COLOR <= 10;
+
 				WHEN OTHERS =>--????
 				
 			END CASE;--Fim do if que trata o status da vida do millipede
@@ -335,28 +368,6 @@ BEGIN
 	END IF;--Fim do case que verifica se chegou clock
 END PROCESS;
 
-UPDATE_COLLISION: PROCESS(clk, reset)
-BEGIN
-	IF(RESET = '1') THEN
-		MIL_COUNT_COLIS <= 0;
-		NUM_OBSTS <= 1;
-		OBSTACLE_ARRAY(0) <= OBSTACLE;
-		
-	ELSIF (CLK'EVENT AND CLK = '1') THEN
-		
-		IF(ROCKET.UPDATE_STATE = FIRED AND ROCKET.CUR_POSIT - 40 = MILLIPEDE_PARTS(MIL_COUNT_COLIS).CUR_POSIT) THEN		
-				MILLIPEDE_PARTS(MIL_COUNT_COLIS).LIFE <= DEAD;
-				NUM_OBSTS <= NUM_OBSTS+1;
-				OBSTACLE_ARRAY(NUM_OBSTS-1).CUR_POSIT <= MILLIPEDE_PARTS(MIL_COUNT_COLIS).CUR_POSIT;
-				OBSTACLE_ARRAY(NUM_OBSTS-1).LIFE <= 1;
-				OBSTACLE_ARRAY(NUM_OBSTS-1).CHAR <= 7;
-				OBSTACLE_ARRAY(NUM_OBSTS-1).COLOR <= 10;
-		END IF;
-		
-		MIL_COUNT_COLIS <= (MIL_COUNT_COLIS+1) MOD NUM_MILLIPEDE_PARTS;
-	END IF;
-END PROCESS;
-
 -- Escreve na Tela
 RENDER_SCREEN: PROCESS (clk, reset)
 BEGIN
@@ -365,6 +376,7 @@ BEGIN
 		videoflag <= '0';
 		MIL_COUNT_RENDER <= 0;
 		OBST_COUNT_RENDER <= 0;
+		
 	
 		--Inicializa a posicao anterior da nave
 		SPACESHIP.PREV_POSIT <= 0;
@@ -443,8 +455,7 @@ BEGIN
 				VIDEOE <= x"08";
 			WHEN x"08" => --Apaga o pedaco do millipede
 				
-				IF(MILLIPEDE_PARTS(MIL_COUNT_RENDER).PREV_POSIT = MILLIPEDE_PARTS(MIL_COUNT_RENDER).CUR_POSIT 
-				OR MILLIPEDE_PARTS(MIL_COUNT_RENDER).LIFE = DEAD) THEN
+				IF(MILLIPEDE_PARTS(MIL_COUNT_RENDER).PREV_POSIT = MILLIPEDE_PARTS(MIL_COUNT_RENDER).CUR_POSIT) THEN
 					
 					--Se o millipede nao mexeu, pode passar para o proximo estagio da maquina de rendering 				
 					--que por enquanto nao existe. reinicia a maquina de estados					
@@ -475,24 +486,32 @@ BEGIN
 				
 				MILLIPEDE_PARTS(MIL_COUNT_RENDER).PREV_POSIT <= MILLIPEDE_PARTS(MIL_COUNT_RENDER).CUR_POSIT;
 
-				videoflag <= '1';
-													
-				VIDEOE <= x"0B";--Vai pro estado que desliga a flag					
-			
 				MIL_COUNT_RENDER <= (MIL_COUNT_RENDER + 1) MOD NUM_MILLIPEDE_PARTS; 
 				--Faz com que a iteracao seguinte do process
 				--desenhe o proximo segmento do millipede
+				
+				videoflag <= '1';
+													
+				VIDEOE <= x"0B";--Vai pro estado que desliga a flag					
+
 			WHEN x"0B" => --Desliga a flag de video 
 				videoflag <= '0';
 				VIDEOE <= x"0C";--Vai pro estado que desenha os obstaculos
 			WHEN x"0C" =>--Desenha obstaculo
-				vga_char(15 DOWNTO 12) <= "0000";
-				vga_char(11 DOWNTO 8) <= std_logic_vector(to_unsigned(OBSTACLE_ARRAY(OBST_COUNT_RENDER).COLOR, 4)); 
-				vga_char(7 DOWNTO 0) <= std_logic_vector(to_unsigned(OBSTACLE_ARRAY(OBST_COUNT_RENDER).CHAR, 8));
-				vga_pos(15 DOWNTO 0) <= std_logic_vector(to_unsigned(OBSTACLE_ARRAY(OBST_COUNT_RENDER).CUR_POSIT, 16));
-				videoflag <= '1';
+				IF(OBST_RENDER_TIMER > 2500) THEN					
+					vga_char(15 DOWNTO 12) <= "0000";
+					vga_char(11 DOWNTO 8) <= std_logic_vector(to_unsigned(OBSTACLE_ARRAY(OBST_COUNT_RENDER).COLOR, 4)); 
+					vga_char(7 DOWNTO 0) <= std_logic_vector(to_unsigned(OBSTACLE_ARRAY(OBST_COUNT_RENDER).CHAR, 8));
+					vga_pos(15 DOWNTO 0) <= std_logic_vector(to_unsigned(OBSTACLE_ARRAY(OBST_COUNT_RENDER).CUR_POSIT, 16));
+					videoflag <= '1';
+					OBST_COUNT_RENDER <= (OBST_COUNT_RENDER + 1) MOD NUM_OBSTS;
+					OBST_RENDER_TIMER <= 0;
+				ELSE
+					OBST_RENDER_TIMER <= OBST_RENDER_TIMER + 1;
+				END IF;
 
-				OBST_COUNT_RENDER <= (OBST_COUNT_RENDER + 1) MOD NUM_OBSTS;
+				
+				
 				VIDEOE <= x"0D";--Vai pro estado que desliga a flag
 			WHEN x"0D" =>--Reinicia a maquina
 				videoflag <= '0';
